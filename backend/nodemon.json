@@ -1,0 +1,5 @@
+{
+  "ignore": ["scratch/*", "scripts/clear.js"],
+  "watch": ["server.js", "routes", "controllers", "middleware", "models", "config"],
+  "ext": "js,json"
+}

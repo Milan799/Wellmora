@@ -1,0 +1,307 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+:root {
+  /* Default: Dark mode variables */
+  --bg-color: #0b0f19;
+  --text-color: #f8fafc;
+  --text-muted: #94a3b8;
+  
+  --card-bg: rgba(255, 255, 255, 0.04);
+  --card-border: rgba(255, 255, 255, 0.06);
+  --card-hover-bg: rgba(255, 255, 255, 0.07);
+  --card-hover-border: rgba(255, 255, 255, 0.15);
+  
+  --input-bg: rgba(255, 255, 255, 0.03);
+  --input-color: #ffffff;
+  --input-border: rgba(255, 255, 255, 0.08);
+  
+  --btn-secondary-bg: rgba(255, 255, 255, 0.05);
+  --btn-secondary-color: #ffffff;
+  --btn-secondary-border: rgba(255, 255, 255, 0.1);
+  
+  --nav-bg: rgba(11, 15, 25, 0.75);
+  --nav-border: rgba(255, 255, 255, 0.05);
+  
+  --scroll-track: #0b0f19;
+  --scroll-thumb: rgba(255, 255, 255, 0.1);
+  
+  --blob-1: rgba(16, 185, 129, 0.15);
+  --blob-2: rgba(59, 130, 246, 0.15);
+  --blob-3: rgba(139, 92, 246, 0.1);
+
+  --panel-bg: rgba(255, 255, 255, 0.03);
+  --panel-border: rgba(255, 255, 255, 0.08);
+  
+  --badge-bg: rgba(0, 0, 0, 0.6);
+  --badge-color: #cbd5e1;
+  --badge-border: rgba(255, 255, 255, 0.1);
+
+  /* Dynamic color variables to override tailwind standard classes */
+  --text-white-dynamic: #ffffff;
+  --text-100-dynamic: #f1f5f9;
+  --text-200-dynamic: #e2e8f0;
+  --text-300-dynamic: #cbd5e1;
+  --text-400-dynamic: #94a3b8;
+  --slate-900-dynamic: #0f172a;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    /* Light mode override variables */
+    --bg-color: #f8fafc;
+    --text-color: #0f172a;
+    --text-muted: #475569;
+    
+    --card-bg: rgba(255, 255, 255, 0.65);
+    --card-border: rgba(15, 23, 42, 0.08);
+    --card-hover-bg: rgba(255, 255, 255, 0.85);
+    --card-hover-border: rgba(15, 23, 42, 0.15);
+    
+    --input-bg: rgba(255, 255, 255, 0.8);
+    --input-color: #0f172a;
+    --input-border: rgba(15, 23, 42, 0.1);
+    
+    --btn-secondary-bg: rgba(255, 255, 255, 0.75);
+    --btn-secondary-color: #0f172a;
+    --btn-secondary-border: rgba(15, 23, 42, 0.12);
+    
+    --nav-bg: rgba(255, 255, 255, 0.85);
+    --nav-border: rgba(15, 23, 42, 0.08);
+    
+    --scroll-track: #f8fafc;
+    --scroll-thumb: rgba(15, 23, 42, 0.15);
+    
+    --blob-1: rgba(16, 185, 129, 0.12);
+    --blob-2: rgba(59, 130, 246, 0.12);
+    --blob-3: rgba(139, 92, 246, 0.08);
+
+    --panel-bg: rgba(255, 255, 255, 0.6);
+    --panel-border: rgba(15, 23, 42, 0.08);
+    
+    --badge-bg: rgba(255, 255, 255, 0.9);
+    --badge-color: #334155;
+    --badge-border: rgba(15, 23, 42, 0.1);
+
+    /* Dynamic color variables override for light mode */
+    --text-white-dynamic: #0f172a;
+    --text-100-dynamic: #1e293b;
+    --text-200-dynamic: #334155;
+    --text-300-dynamic: #475569;
+    --text-400-dynamic: #64748b;
+    --slate-900-dynamic: #f1f5f9;
+  }
+}
+
+@theme {
+  --font-sans: 'Plus Jakarta Sans', sans-serif;
+  --color-primary: #10b981;
+  --color-primary-dark: #059669;
+  --color-dark-bg: var(--bg-color);
+
+  /* Override standard classes for dynamic transitions */
+  --color-white: var(--text-white-dynamic);
+  --color-slate-100: var(--text-100-dynamic);
+  --color-slate-200: var(--text-200-dynamic);
+  --color-slate-300: var(--text-300-dynamic);
+  --color-slate-400: var(--text-400-dynamic);
+  --color-slate-900: var(--slate-900-dynamic);
+}
+
+:root {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Glassmorphism custom classes */
+.glass-panel {
+  background: var(--nav-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--nav-border);
+}
+
+.glass-panel-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-panel-hover:hover {
+  background: var(--card-hover-bg);
+  border-color: var(--card-hover-border);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.glass-card {
+  background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--card-border);
+  border-radius: 1rem;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.glass-input {
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--input-color);
+  transition: all 0.2s;
+}
+
+.glass-input:focus {
+  background: rgba(16, 185, 129, 0.05);
+  border-color: rgba(16, 185, 129, 0.5);
+  outline: none;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
+}
+
+.glass-btn-primary {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white !important; /* Always white text on green button */
+  transition: all 0.2s;
+}
+
+.glass-btn-primary:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+  transform: translateY(-1px);
+}
+
+.glass-btn-secondary {
+  background: var(--btn-secondary-bg);
+  border: 1px solid var(--btn-secondary-border);
+  color: var(--btn-secondary-color);
+  transition: all 0.2s;
+}
+
+.glass-btn-secondary:hover {
+  background: rgba(16, 185, 129, 0.05);
+  border-color: rgba(16, 185, 129, 0.2);
+  transform: translateY(-1px);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scroll-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(16, 185, 129, 0.4);
+}
+
+/* Background Gradients */
+.bg-blob-gradient {
+  background: radial-gradient(circle at 10% 20%, var(--blob-1) 0%, transparent 40%),
+              radial-gradient(circle at 90% 80%, var(--blob-2) 0%, transparent 45%),
+              radial-gradient(circle at 50% 50%, var(--blob-3) 0%, transparent 50%);
+  background-color: var(--bg-color);
+  transition: background-color 0.3s ease;
+}
+
+/* Partner Store Badges and Container */
+.partner-store-container {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  padding: 8px 12px;
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.3s ease;
+}
+
+.partner-store-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+/* Amazon Brand Button */
+.btn-amazon {
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(255, 153, 0, 0.12); /* Amazon orange with opacity */
+  color: #ff9900;
+  border: 1px solid rgba(255, 153, 0, 0.25);
+  padding: 4px 10px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-amazon:hover {
+  background: #ff9900;
+  color: #0b0f19; /* dark background color */
+  border-color: #ff9900;
+  box-shadow: 0 4px 12px rgba(255, 153, 0, 0.25);
+  transform: translateY(-1px);
+}
+
+/* Flipkart Brand Button */
+.btn-flipkart {
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(40, 116, 240, 0.12); /* Flipkart blue with opacity */
+  color: #2874f0;
+  border: 1px solid rgba(40, 116, 240, 0.25);
+  padding: 4px 10px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-flipkart:hover {
+  background: #2874f0;
+  color: #ffffff;
+  border-color: #2874f0;
+  box-shadow: 0 4px 12px rgba(40, 116, 240, 0.25);
+  transform: translateY(-1px);
+}
+
+@media (prefers-color-scheme: light) {
+  .btn-amazon {
+    background: rgba(217, 119, 6, 0.08);
+    color: #b45309;
+    border-color: rgba(217, 119, 6, 0.2);
+  }
+  .btn-amazon:hover {
+    background: #d97706;
+    color: #ffffff;
+    border-color: #d97706;
+    box-shadow: 0 4px 12px rgba(217, 119, 6, 0.2);
+  }
+  .btn-flipkart {
+    background: rgba(29, 78, 216, 0.08);
+    color: #1e40af;
+    border-color: rgba(29, 78, 216, 0.2);
+  }
+  .btn-flipkart:hover {
+    background: #1d4ed8;
+    color: #ffffff;
+    border-color: #1d4ed8;
+    box-shadow: 0 4px 12px rgba(29, 78, 216, 0.2);
+  }
+}
