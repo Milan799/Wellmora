@@ -41,6 +41,11 @@ export const getSupportMessages = async (req, res, next) => {
       count: messages.length,
       messages
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Delete/Resolve a support message
 // @route   DELETE /api/support/:id
 // @access  Public
