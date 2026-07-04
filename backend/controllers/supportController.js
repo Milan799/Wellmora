@@ -41,27 +41,32 @@ export const getSupportMessages = async (req, res, next) => {
       count: messages.length,
       messages
     });
-    // @desc    Delete/Resolve a support message
-    // @route   DELETE /api/support/:id
-    // @access  Public
-    export const deleteSupportMessage = async (req, res, next) => {
-      try {
-        const message = await SupportMessage.findById(req.params.id);
+  } catch (error) {
+    next(error);
+  }
+};
 
-        if (!message) {
-          return res.status(404).json({
-            success: false,
-            error: 'Support message not found'
-          });
-        }
+// @desc    Delete/Resolve a support message
+// @route   DELETE /api/support/:id
+// @access  Public
+export const deleteSupportMessage = async (req, res, next) => {
+  try {
+    const message = await SupportMessage.findById(req.params.id);
 
-        await message.deleteOne();
+    if (!message) {
+      return res.status(404).json({
+        success: false,
+        error: 'Support message not found'
+      });
+    }
 
-        res.status(200).json({
-          success: true,
-          message: 'Support message resolved/deleted'
-        });
-      } catch (error) {
-        next(error);
-      }
-    };
+    await message.deleteOne();
+
+    res.status(200).json({
+      success: true,
+      message: 'Support message resolved/deleted'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
