@@ -136,6 +136,22 @@ export const ProductProvider = ({ children }) => {
     }
   };
 
+  const adminDeleteSupportMessage = async (id) => {
+    try {
+      const res = await fetch(`${API_URL}/api/support/${id}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessages(prev => prev.filter(msg => msg._id !== id));
+        return { success: true };
+      }
+      return { success: false, error: data.error || 'Failed to delete support message' };
+    } catch (err) {
+      return { success: false, error: `Network error resolving support message: ${err.message}` };
+    }
+  };
+
   useEffect(() => {
     fetchProducts();
     fetchMessages();
@@ -152,7 +168,8 @@ export const ProductProvider = ({ children }) => {
       adminDeleteProduct,
       messages,
       messagesLoading,
-      fetchMessages
+      fetchMessages,
+      adminDeleteSupportMessage
     }}>
       {children}
     </ProductContext.Provider>

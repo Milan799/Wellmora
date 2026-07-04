@@ -31,7 +31,8 @@ const AdminDashboard = () => {
     adminDeleteProduct,
     messages,
     messagesLoading,
-    fetchMessages
+    fetchMessages,
+    adminDeleteSupportMessage
   } = useProducts();
   const navigate = useNavigate();
 
@@ -510,7 +511,20 @@ const AdminDashboard = () => {
                             <p className="text-xs text-[var(--text-muted)] leading-relaxed whitespace-pre-wrap">{msg.message}</p>
                           </div>
                         </div>
-                        <div className="mt-4 pt-3 border-t border-[var(--card-border)] flex justify-end">
+                        <div className="mt-4 pt-3 border-t border-[var(--card-border)] flex justify-between items-center gap-2">
+                          <button
+                            onClick={async () => {
+                              if (window.confirm('Mark this support message as resolved and delete it?')) {
+                                const res = await adminDeleteSupportMessage(msg._id);
+                                if (!res.success) alert(res.error);
+                              }
+                            }}
+                            className="p-2 bg-[var(--btn-secondary-bg)] hover:bg-rose-500/10 border border-[var(--btn-secondary-border)] hover:border-rose-500/15 text-[var(--text-muted)] hover:text-rose-500 rounded-xl transition-all cursor-pointer text-[10px] font-bold flex items-center gap-1"
+                            title="Resolve Ticket"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Resolve
+                          </button>
                           <a
                             href={`mailto:${msg.email}?subject=Re: ${encodeURIComponent(msg.subject)}`}
                             className="glass-btn-secondary px-4 py-2 rounded-xl text-[10px] font-bold flex items-center gap-1.5 hover:text-white"

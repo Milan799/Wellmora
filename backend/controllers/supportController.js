@@ -41,6 +41,26 @@ export const getSupportMessages = async (req, res, next) => {
       count: messages.length,
       messages
     });
+// @desc    Delete/Resolve a support message
+// @route   DELETE /api/support/:id
+// @access  Public
+export const deleteSupportMessage = async (req, res, next) => {
+  try {
+    const message = await SupportMessage.findById(req.params.id);
+
+    if (!message) {
+      return res.status(404).json({
+        success: false,
+        error: 'Support message not found'
+      });
+    }
+
+    await message.deleteOne();
+
+    res.status(200).json({
+      success: true,
+      message: 'Support message resolved/deleted'
+    });
   } catch (error) {
     next(error);
   }
