@@ -118,12 +118,42 @@ export const ProductProvider = ({ children }) => {
     }
   };
 
+  const [messages, setMessages] = useState([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+
+  const fetchMessages = async () => {
+    setMessagesLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/support`);
+      const data = await res.json();
+      if (data.success) {
+        setMessages(data.messages || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch messages:', err);
+    } finally {
+      setMessagesLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchProducts();
+    fetchMessages();
   }, []);
 
   return (
-    <ProductContext.Provider value={{ products, loading, error, fetchProducts, adminCreateProduct, adminUpdateProduct, adminDeleteProduct }}>
+    <ProductContext.Provider value={{ 
+      products, 
+      loading, 
+      error, 
+      fetchProducts, 
+      adminCreateProduct, 
+      adminUpdateProduct, 
+      adminDeleteProduct,
+      messages,
+      messagesLoading,
+      fetchMessages
+    }}>
       {children}
     </ProductContext.Provider>
   );

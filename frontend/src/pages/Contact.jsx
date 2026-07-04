@@ -2,6 +2,19 @@ import React, { useState } from 'react';
 import { Mail, Send, CheckCircle2, ShieldCheck, HelpCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+const getApiUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  const hostname = window.location.hostname;
+  if (hostname !== 'localhost' && hostname !== '127.0.0.1' && !hostname.endsWith('.vercel.app')) {
+    return `http://${hostname}:5000`;
+  }
+  return 'http://localhost:5000';
+};
+
+const API_URL = getApiUrl();
+
 const Contact = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -12,41 +25,35 @@ const Contact = () => {
   const [statusStep, setStatusStep] = useState('');
   const [sendSuccess, setSendSuccess] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!name || !email || !subject || !message) return;
 
     setIsSending(true);
-    setStatusStep('Initializing SMTP mail socket...');
+    setStatusStep('Sending your support request...');
 
-    // Simulate sending stages
-    setTimeout(() => {
-      setStatusStep('Resolving MX records for wellmora.com...');
-      setTimeout(() => {
-        setStatusStep('Delivering message package...');
-        setTimeout(() => {
-          // Save to localStorage so it is fully stored
-          const existing = JSON.parse(localStorage.getItem('wellmora_support_messages') || '[]');
-          const newMsg = {
-            id: 'msg_' + Date.now(),
-            name,
-            email,
-            subject,
-            message,
-            timestamp: new Date().toISOString()
-          };
-          localStorage.setItem('wellmora_support_messages', JSON.stringify([newMsg, ...existing]));
-
-          setIsSending(false);
-          setSendSuccess(true);
-          // Reset form fields
-          setName('');
-          setEmail('');
-          setSubject('');
-          setMessage('');
-        }, 800);
-      }, 800);
-    }, 800);
+    try {
+      const res = await fetch(`${API_URL}/api/support`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, subject, message })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setIsSending(false);
+        setSendSuccess(true);
+        setName('');
+        setEmail('');
+        setSubject('');
+        setMessage('');
+      } else {
+        alert(data.error || 'Failed to send support request');
+        setIsSending(false);
+      }
+    } catch (err) {
+      alert('Network error sending support request. Please try again.');
+      setIsSending(false);
+    }
   };
 
   return (
