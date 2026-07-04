@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
+import { io } from 'socket.io-client';
 
 const ProductContext = createContext();
 
@@ -152,6 +153,43 @@ export const ProductProvider = ({ children }) => {
     }
   };
 
+  const [socket, setSocket] = useState(null);
+
+  useEffect(() => {
+    const socketConnection = io(API_URL, {
+      transports: ['websocket', 'polling'],
+      withCredentials: true
+    });
+    setSocket(socketConnection);
+
+    // Listeners
+    socketConnection.on('product_created', (newProduct) => {
+      setProducts(prev => {
+        if (prev.some(p => p._id === newProduct._id)) return prev;
+        return [newProduct, ...prev];
+      });
+    });
+
+    socketConnection.on('product_updated', (updatedProduct) => {
+      setProducts(prev => prev.map(p => p._id === updatedProduct.id ? { ...p, ...updatedProduct, _id: updatedProduct.id } : p));
+    });
+
+    socketConnection.on('product_deleted', (deletedId) => {
+      setProducts(prev => prev.filter(p => p._id !== deletedId));
+    });
+
+    socketConnection.on('support_message_created', (newMsg) => {
+      setMessages(prev => {
+        if (prev.some(m => m._id === newMsg._id)) return prev;
+        return [newMsg, ...prev];
+      });
+    });
+
+    return () => {
+      socketConnection.close();
+    };
+  }, []);
+
   useEffect(() => {
     fetchProducts();
     fetchMessages();
@@ -169,7 +207,8 @@ export const ProductProvider = ({ children }) => {
       messages,
       messagesLoading,
       fetchMessages,
-      adminDeleteSupportMessage
+      adminDeleteSupportMessage,
+      socket
     }}>
       {children}
     </ProductContext.Provider>
