@@ -2,6 +2,19 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 
 const AuthContext = createContext();
 
+const getApiUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  const hostname = window.location.hostname;
+  if (hostname !== 'localhost' && hostname !== '127.0.0.1' && !hostname.endsWith('.vercel.app')) {
+    return `http://${hostname}:5000`;
+  }
+  return 'http://localhost:5000';
+};
+
+const API_URL = getApiUrl();
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -10,16 +23,16 @@ export const AuthProvider = ({ children }) => {
   // Check if user is logged in on mount
   const checkAuth = async () => {
     try {
-      const res = await fetch('/api/auth/me');
+      const res = await fetch(`${API_URL}/api/auth/me`);
       const data = await res.json();
       if (res.ok && data.success) {
         setUser(data.user);
       } else {
         // Try refresh token if access token is missing/expired
-        const refreshRes = await fetch('/api/auth/refresh', { method: 'POST' });
+        const refreshRes = await fetch(`${API_URL}/api/auth/refresh`, { method: 'POST' });
         const refreshData = await refreshRes.json();
         if (refreshRes.ok && refreshData.success) {
-          const retryRes = await fetch('/api/auth/me');
+          const retryRes = await fetch(`${API_URL}/api/auth/me`);
           const retryData = await retryRes.json();
           if (retryRes.ok && retryData.success) {
             setUser(retryData.user);
@@ -44,7 +57,7 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -69,7 +82,7 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/auth/register', {
+      const res = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password })
@@ -93,7 +106,7 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/logout', { method: 'POST' });
+      const res = await fetch(`${API_URL}/api/auth/logout`, { method: 'POST' });
       if (res.ok) {
         setUser(null);
       }
@@ -106,7 +119,7 @@ export const AuthProvider = ({ children }) => {
 
   const updateAddress = async (shippingAddress) => {
     try {
-      const res = await fetch('/api/auth/address', {
+      const res = await fetch(`${API_URL}/api/auth/address`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ shippingAddress, billingAddress: shippingAddress })
@@ -127,7 +140,7 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/auth/social-login', {
+      const res = await fetch(`${API_URL}/api/auth/social-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, provider })

@@ -10,13 +10,12 @@ import {
   X,
   Search,
   Filter,
-  ArrowUpDown,
   ExternalLink,
-  ArrowRight,
   User,
   LogOut,
   Image,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Menu
 } from 'lucide-react';
 import Logo from '../components/Logo.jsx';
 
@@ -25,61 +24,77 @@ const AdminDashboard = () => {
   const { products, loading: productsLoading, fetchProducts, adminCreateProduct, adminUpdateProduct, adminDeleteProduct } = useProducts();
   const navigate = useNavigate();
 
-  // Modals / Sliders
+  // Mobile sidebar state
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Modals / Drawers
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isProductDrawerOpen, setIsProductDrawerOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  
-  // Product Form states
+
+  // Product Form
   const [productForm, setProductForm] = useState({
-    title: '',
-    description: '',
-    category: 'Kitchen Appliances',
-    price: '',
-    discountPrice: '',
-    stock: '',
-    images: '', // Base64 data URL
-    amazonLink: '',
-    flipkartLink: ''
+    title: '', description: '', category: 'Kitchen Appliances',
+    price: '', discountPrice: '', stock: '', images: '',
+    amazonLink: '', flipkartLink: ''
   });
 
-  // Profile Form states
-  const [profileForm, setProfileForm] = useState({
-    name: '',
-    email: ''
-  });
+  // Profile Form
+  const [profileForm, setProfileForm] = useState({ name: '', email: '' });
 
-  // Search & Filter state
+  // Search & Filter
   const [productSearch, setProductSearch] = useState('');
   const [productCategoryFilter, setProductCategoryFilter] = useState('');
 
+  useEffect(() => { fetchProducts(); }, []);
+
+  // Close sidebar on resize to desktop
   useEffect(() => {
-    fetchProducts();
+    const onResize = () => { if (window.innerWidth >= 1024) setIsSidebarOpen(false); };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
+  const handleLogout = async () => { await logout(); navigate('/login'); };
 
-  // Local Image file to Base64 reader
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setProductForm((prev) => ({ ...prev, images: reader.result }));
+        const img = new window.Image();
+        img.src = reader.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const max_size = 800; // max size in px
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > max_size) {
+              height *= max_size / width;
+              width = max_size;
+            }
+          } else {
+            if (height > max_size) {
+              width *= max_size / height;
+              height = max_size;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.7); // 70% quality compression
+          setProductForm(prev => ({ ...prev, images: dataUrl }));
+        };
       };
       reader.readAsDataURL(file);
     }
   };
 
-  // Profile Update Handler
   const openProfileEdit = () => {
-    setProfileForm({
-      name: user?.name || 'Chief Enterprise Admin',
-      email: user?.email || 'admin@wellmora.com'
-    });
+    setProfileForm({ name: user?.name || 'Chief Enterprise Admin', email: user?.email || 'admin@wellmora.com' });
     setIsProfileModalOpen(true);
   };
 
@@ -91,32 +106,17 @@ const AdminDashboard = () => {
     alert('Administrator profile updated successfully!');
   };
 
-  // Product CRUD Handlers
   const openProductCreate = () => {
     setSelectedProduct(null);
-    setProductForm({
-      title: '',
-      description: '',
-      category: 'Kitchen Appliances',
-      price: '',
-      discountPrice: '',
-      stock: '',
-      images: '',
-      amazonLink: '',
-      flipkartLink: ''
-    });
+    setProductForm({ title: '', description: '', category: 'Kitchen Appliances', price: '', discountPrice: '', stock: '', images: '', amazonLink: '', flipkartLink: '' });
     setIsProductDrawerOpen(true);
   };
 
   const openProductEdit = (prod) => {
     setSelectedProduct(prod);
     setProductForm({
-      title: prod.title,
-      description: prod.description,
-      category: prod.category,
-      price: prod.price,
-      discountPrice: prod.discountPrice || '',
-      stock: prod.stock,
+      title: prod.title, description: prod.description, category: prod.category,
+      price: prod.price, discountPrice: prod.discountPrice || '', stock: prod.stock,
       images: prod.images?.[0] || '',
       amazonLink: prod.sourceMarketplaceLinks?.amazon || '',
       flipkartLink: prod.sourceMarketplaceLinks?.flipkart || ''
@@ -127,448 +127,413 @@ const AdminDashboard = () => {
   const handleProductSubmit = async (e) => {
     if (e) e.preventDefault();
     try {
-      console.log('handleProductSubmit called with form:', productForm);
-      if (!productForm.title || !productForm.price || productForm.stock === '') {
-        console.log('Validation failed: missing title, price, or stock');
-        return;
-      }
-
+      if (!productForm.title || !productForm.price || productForm.stock === '') return;
       const payload = {
-        title: productForm.title,
-        description: productForm.description,
-        category: productForm.category,
-        price: Number(productForm.price),
+        title: productForm.title, description: productForm.description,
+        category: productForm.category, price: Number(productForm.price),
         discountPrice: productForm.discountPrice ? Number(productForm.discountPrice) : undefined,
         stock: Number(productForm.stock),
         images: productForm.images ? [productForm.images] : undefined,
-        amazonLink: productForm.amazonLink,
-        flipkartLink: productForm.flipkartLink
+        amazonLink: productForm.amazonLink, flipkartLink: productForm.flipkartLink
       };
-      console.log('Payload constructed:', payload);
-
       if (selectedProduct) {
-        console.log('Updating product:', selectedProduct._id);
         const res = await adminUpdateProduct(selectedProduct._id, payload);
-        console.log('Update response:', res);
-        if (res.success) {
-          alert('Appliance updated successfully!');
-        } else {
-          alert(res.error || 'Failed to update appliance');
-        }
+        alert(res.success ? 'Appliance updated!' : (res.error || 'Failed to update'));
       } else {
-        console.log('Creating product...');
         const res = await adminCreateProduct(payload);
-        console.log('Create response:', res);
-        if (res.success) {
-          alert('Appliance added to catalog!');
-        } else {
-          alert(res.error || 'Failed to add appliance');
-        }
+        alert(res.success ? 'Appliance added to catalog!' : (res.error || 'Failed to add'));
       }
       setIsProductDrawerOpen(false);
       fetchProducts();
     } catch (err) {
-      console.error('Error in handleProductSubmit:', err);
-      alert('An error occurred during submission: ' + err.message);
+      alert('Submission error: ' + err.message);
     }
   };
 
   const handleDeleteProd = async (id) => {
-    if (window.confirm('Are you sure you want to retire this appliance?')) {
+    if (window.confirm('Retire this appliance?')) {
       const res = await adminDeleteProduct(id);
-      if (res.success) {
-        alert('Appliance retired.');
-        fetchProducts();
-      } else {
-        alert(res.error || 'Failed to delete appliance');
-      }
+      if (res.success) { alert('Appliance retired.'); fetchProducts(); }
+      else alert(res.error || 'Failed to delete');
     }
   };
 
-  // Filters logic
-  const filteredProducts = products.filter((p) => {
+  const filteredProducts = products.filter(p => {
     const matchQ = p.title.toLowerCase().includes(productSearch.toLowerCase()) || p.description.toLowerCase().includes(productSearch.toLowerCase());
     const matchCat = productCategoryFilter ? p.category === productCategoryFilter : true;
     return matchQ && matchCat;
   });
 
+  // Reusable sidebar content
+  const SidebarContent = () => (
+    <div className="flex flex-col justify-between h-full">
+      <div>
+        <div className="flex items-center justify-center mb-8 border-b border-[var(--nav-border)] pb-6">
+          <Logo size="sm" />
+        </div>
+        <nav className="flex flex-col gap-2">
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black transition-all bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-l-2 border-emerald-500 shadow-lg shadow-emerald-500/5">
+            <ShoppingBag className="w-4 h-4 text-emerald-500" />
+            Appliance Catalog
+          </div>
+        </nav>
+      </div>
+
+      <div className="border-t border-[var(--nav-border)] pt-5 flex flex-col gap-3">
+        <button
+          onClick={openProfileEdit}
+          className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-white/2 border border-white/5 hover:border-emerald-500/25 hover:bg-emerald-500/5 transition-all cursor-pointer text-left w-full group"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-500/20 transition-all">
+              <User className="w-4 h-4 text-emerald-500" />
+            </div>
+            <div className="overflow-hidden min-w-0">
+              <p className="text-xs font-black text-[var(--text-color)] truncate group-hover:text-emerald-500 transition-colors">
+                {user?.name || 'Chief Enterprise Admin'}
+              </p>
+              <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest block mt-0.5">
+                {user?.role || 'Admin'}
+              </span>
+            </div>
+          </div>
+          <Edit3 className="w-3.5 h-3.5 text-slate-500 group-hover:text-emerald-500 transition-all flex-shrink-0" />
+        </button>
+
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-xs font-bold text-rose-500 hover:text-white hover:bg-rose-500/10 border border-rose-500/10 transition-all cursor-pointer"
+        >
+          <LogOut className="w-4 h-4 text-rose-500" />
+          Terminate Console
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex min-h-screen bg-[var(--bg-color)] text-[var(--text-color)] font-sans transition-colors duration-300">
-      {/* Sidebar Navigation */}
-      <aside className="w-64 glass-panel border-r border-[var(--nav-border)] flex flex-col justify-between p-6">
-        <div>
-          <div className="flex items-center justify-center mb-10 border-b border-[var(--nav-border)] pb-6">
-            <Logo size="sm" />
-          </div>
 
-          <nav className="flex flex-col gap-2">
-            <div className="flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all text-left bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-l-2 border-emerald-500 font-black shadow-lg shadow-emerald-500/5">
-              <ShoppingBag className="w-4 h-4 text-emerald-500" />
-              Appliance Catalog
-            </div>
-          </nav>
-        </div>
-
-        {/* Profile Card & Logout */}
-        <div className="border-t border-[var(--nav-border)] pt-6 flex flex-col gap-4">
-          <button
-            onClick={openProfileEdit}
-            title="Edit Admin Profile"
-            className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-white/2 border border-white/5 hover:border-emerald-500/25 hover:bg-emerald-500/5 transition-all cursor-pointer text-left w-full group"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-500/20 transition-all">
-                <User className="w-4 h-4 text-emerald-500" />
-              </div>
-              <div className="overflow-hidden min-w-0">
-                <p className="text-xs font-black text-[var(--text-color)] truncate group-hover:text-emerald-500 dark:group-hover:text-emerald-450 transition-colors">
-                  {user?.name || 'Chief Enterprise Admin'}
-                </p>
-                <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest block mt-0.5">
-                  {user?.role || 'Admin'}
-                </span>
-              </div>
-            </div>
-            <Edit3 className="w-3.5 h-3.5 text-slate-500 group-hover:text-emerald-500 transition-all flex-shrink-0" />
-          </button>
-
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-xs font-bold text-rose-500 hover:text-white hover:bg-rose-500/10 border border-rose-500/10 transition-all cursor-pointer"
-          >
-            <LogOut className="w-4 h-4 text-rose-500" />
-            Terminate Console
-          </button>
-        </div>
+      {/* ── DESKTOP SIDEBAR ── */}
+      <aside className="hidden lg:flex w-64 flex-shrink-0 glass-panel border-r border-[var(--nav-border)] flex-col p-6">
+        <SidebarContent />
       </aside>
 
-      {/* Main Workspace Area */}
-      <main className="flex-1 overflow-y-auto p-8 lg:p-10 bg-slate-900/5 relative">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/5 rounded-full blur-3xl -z-10 pointer-events-none"></div>
-
-        {/* Catalog Panel */}
-        <div className="space-y-6 animate-fadeIn">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-extrabold text-[var(--text-color)]">Appliance Catalog</h1>
-              <p className="text-[var(--text-muted)] text-xs mt-1">Manage listings, edit pricing structures, upload image files, and assign redirection links.</p>
-            </div>
+      {/* ── MOBILE SIDEBAR OVERLAY ── */}
+      {isSidebarOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />
+          {/* Drawer */}
+          <aside className="absolute left-0 top-0 h-full w-72 glass-panel border-r border-[var(--nav-border)] p-6 flex flex-col shadow-2xl animate-slideRight">
             <button
-              onClick={openProductCreate}
-              className="glass-btn-primary px-5 py-3 rounded-xl text-xs font-black tracking-wide flex items-center gap-1.5 cursor-pointer shadow-lg shadow-emerald-500/10"
+              onClick={() => setIsSidebarOpen(false)}
+              className="absolute top-4 right-4 p-1.5 text-[var(--text-muted)] hover:text-rose-500 transition-colors"
             >
-              <PlusCircle className="w-4 h-4" />
-              Add New Appliance
+              <X className="w-5 h-5" />
             </button>
-          </div>
+            <SidebarContent />
+          </aside>
+        </div>
+      )}
 
-          {/* Filter Toolbar */}
-          <div className="flex flex-col sm:flex-row gap-4 bg-[var(--panel-bg)] border border-[var(--panel-border)] p-4 rounded-2xl">
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Search catalog appliances..."
-                value={productSearch}
-                onChange={(e) => setProductSearch(e.target.value)}
-                className="w-full glass-input pl-9 pr-4 py-2 rounded-xl text-xs"
-              />
-            </div>
-            <div className="relative w-full sm:w-48">
-              <Filter className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-              <select
-                value={productCategoryFilter}
-                onChange={(e) => setProductCategoryFilter(e.target.value)}
-                className="w-full glass-input pl-9 pr-4 py-2 rounded-xl text-xs appearance-none cursor-pointer"
+      {/* ── MAIN CONTENT ── */}
+      <div className="flex-1 flex flex-col min-w-0">
+
+        {/* Mobile Top Bar */}
+        <header className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-[var(--nav-border)] bg-[var(--bg-color)] sticky top-0 z-40">
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 rounded-xl bg-[var(--btn-secondary-bg)] border border-[var(--btn-secondary-border)] text-[var(--text-muted)] hover:text-[var(--text-color)] transition-colors"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <Logo size="sm" />
+          <button
+            onClick={openProductCreate}
+            className="p-2 rounded-xl glass-btn-primary shadow-md"
+            title="Add Appliance"
+          >
+            <PlusCircle className="w-5 h-5" />
+          </button>
+        </header>
+
+        {/* Main Workspace */}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10 bg-slate-900/5 relative">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/5 rounded-full blur-3xl -z-10 pointer-events-none" />
+
+          <div className="space-y-5 animate-fadeIn max-w-7xl mx-auto">
+
+            {/* Header Row */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-[var(--text-color)]">Appliance Catalog</h1>
+                <p className="text-[var(--text-muted)] text-xs mt-1">Manage listings, pricing, images and marketplace links.</p>
+              </div>
+              {/* Add Appliance Button (Desktop & Tablet) */}
+              <button
+                onClick={openProductCreate}
+                className="hidden sm:flex glass-btn-primary px-5 py-3 rounded-xl text-xs font-black tracking-wide items-center gap-1.5 cursor-pointer shadow-lg shadow-emerald-500/10"
               >
-                <option value="">All Categories</option>
-                <option value="Kitchen Appliances">Kitchen Appliances</option>
-                <option value="Home Appliances">Home Appliances</option>
-                <option value="Cookware">Cookware</option>
-                <option value="Tableware">Tableware</option>
-              </select>
+                <PlusCircle className="w-4 h-4" />
+                Add New Appliance
+              </button>
             </div>
-          </div>
 
-          {/* Product Table */}
-          <div className="glass-card border border-[var(--card-border)] overflow-hidden shadow-2xl">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-[var(--card-border)] bg-white/2">
-                    <th className="p-4 font-black text-[var(--text-muted)] uppercase tracking-widest text-[9px]">Appliance Details</th>
-                    <th className="p-4 font-black text-[var(--text-muted)] uppercase tracking-widest text-[9px]">Category</th>
-                    <th className="p-4 font-black text-[var(--text-muted)] uppercase tracking-widest text-[9px]">Regular Price</th>
-                    <th className="p-4 font-black text-[var(--text-muted)] uppercase tracking-widest text-[9px]">Discount Price</th>
-                    <th className="p-4 font-black text-[var(--text-muted)] uppercase tracking-widest text-[9px]">Warehouse Stock</th>
-                    <th className="p-4 font-black text-[var(--text-muted)] uppercase tracking-widest text-[9px]">Marketplace Redirects</th>
-                    <th className="p-4 font-black text-[var(--text-muted)] uppercase tracking-widest text-[9px] text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--card-border)]">
-                  {filteredProducts.map((p) => (
-                    <tr key={p._id} className="hover:bg-slate-500/5 transition-all">
-                      <td className="p-4">
-                        <div className="flex items-center gap-3">
+            {/* Filter Toolbar */}
+            <div className="flex flex-col sm:flex-row gap-3 bg-[var(--panel-bg)] border border-[var(--panel-border)] p-4 rounded-2xl">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search catalog appliances..."
+                  value={productSearch}
+                  onChange={e => setProductSearch(e.target.value)}
+                  className="w-full glass-input pl-9 pr-4 py-2.5 rounded-xl text-xs"
+                />
+              </div>
+              <div className="relative w-full sm:w-48">
+                <Filter className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <select
+                  value={productCategoryFilter}
+                  onChange={e => setProductCategoryFilter(e.target.value)}
+                  className="w-full glass-input pl-9 pr-4 py-2.5 rounded-xl text-xs appearance-none cursor-pointer"
+                >
+                  <option value="">All Categories</option>
+                  <option value="Kitchen Appliances">Kitchen Appliances</option>
+                  <option value="Home Appliances">Home Appliances</option>
+                  <option value="Cookware">Cookware</option>
+                  <option value="Tableware">Tableware</option>
+                </select>
+              </div>
+            </div>
+
+            {/* ── DESKTOP TABLE VIEW (xl+) ── */}
+            <div className="hidden xl:block glass-card border border-[var(--card-border)] overflow-hidden shadow-2xl">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-[var(--card-border)] bg-white/2">
+                      {['Appliance Details', 'Category', 'Regular Price', 'Discount Price', 'Stock', 'Marketplace', 'Actions'].map(h => (
+                        <th key={h} className="p-4 font-black text-[var(--text-muted)] uppercase tracking-widest text-[9px]">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--card-border)]">
+                    {filteredProducts.map(p => (
+                      <tr key={p._id} className="hover:bg-slate-500/5 transition-all">
+                        <td className="p-4">
+                          <div className="flex items-center gap-3">
+                            <img src={p.images?.[0] || 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&q=80&w=60'} alt={p.title} className="w-10 h-10 object-cover rounded border border-[var(--card-border)] flex-shrink-0" />
+                            <div className="min-w-0">
+                              <span className="font-bold text-[var(--text-color)] block truncate max-w-[160px]">{p.title}</span>
+                              <span className="text-[9px] text-[var(--text-muted)] truncate block mt-0.5 max-w-[160px]">{p._id}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-4 font-semibold text-[var(--text-muted)]">{p.category}</td>
+                        <td className="p-4 font-bold text-[var(--text-color)]">₹{p.price}</td>
+                        <td className="p-4 font-bold text-emerald-600 dark:text-emerald-400">{p.discountPrice ? `₹${p.discountPrice}` : '--'}</td>
+                        <td className="p-4">
+                          <span className={`font-bold px-2.5 py-0.5 rounded-lg text-[9px] uppercase tracking-wide inline-block ${p.stock === 0 ? 'bg-rose-500/10 text-rose-500 border border-rose-500/15' : p.stock <= 5 ? 'bg-amber-500/10 text-amber-600 border border-amber-500/15' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/15'}`}>
+                            {p.stock === 0 ? 'Out of Stock' : p.stock <= 5 ? `Low: ${p.stock}` : `${p.stock} units`}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex gap-2 flex-wrap">
+                            {p.sourceMarketplaceLinks?.amazon ? (
+                              <a href={p.sourceMarketplaceLinks.amazon} target="_blank" rel="noopener noreferrer" className="px-2 py-0.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/25 rounded text-[9px] font-bold flex items-center gap-1 transition-colors cursor-pointer hover:text-white">Amazon <ExternalLink className="w-2.5 h-2.5" /></a>
+                            ) : <span className="text-[var(--text-muted)] text-[9px] italic">No Amazon</span>}
+                            {p.sourceMarketplaceLinks?.flipkart ? (
+                              <a href={p.sourceMarketplaceLinks.flipkart} target="_blank" rel="noopener noreferrer" className="px-2 py-0.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/25 rounded text-[9px] font-bold flex items-center gap-1 transition-colors cursor-pointer hover:text-white">Flipkart <ExternalLink className="w-2.5 h-2.5" /></a>
+                            ) : <span className="text-[var(--text-muted)] text-[9px] italic">No Flipkart</span>}
+                          </div>
+                        </td>
+                        <td className="p-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button onClick={() => openProductEdit(p)} className="p-1.5 bg-[var(--btn-secondary-bg)] hover:bg-emerald-500/10 border border-[var(--btn-secondary-border)] hover:border-emerald-500/15 text-[var(--text-muted)] hover:text-emerald-500 rounded-lg transition-all cursor-pointer" title="Edit">
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => handleDeleteProd(p._id)} className="p-1.5 bg-[var(--btn-secondary-bg)] hover:bg-rose-500/10 border border-[var(--btn-secondary-border)] hover:border-rose-500/15 text-[var(--text-muted)] hover:text-rose-500 rounded-lg transition-all cursor-pointer" title="Delete">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredProducts.length === 0 && (
+                      <tr><td colSpan="7" className="p-10 text-center text-slate-500 font-bold">No matching appliances found in the database.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* ── MOBILE / TABLET CARD VIEW (< xl) ── */}
+            <div className="xl:hidden space-y-6">
+              {filteredProducts.length === 0 ? (
+                <div className="glass-card border border-[var(--card-border)] p-10 text-center text-slate-500 font-bold rounded-2xl">
+                  No matching appliances found in the database.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredProducts.map(p => (
+                    <div key={p._id} className="glass-card border border-[var(--card-border)] rounded-2xl overflow-hidden shadow-lg flex flex-col justify-between">
+                      <div>
+                        {/* Card Header */}
+                        <div className="flex items-center gap-4 p-4 border-b border-[var(--card-border)]">
                           <img
                             src={p.images?.[0] || 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&q=80&w=60'}
                             alt={p.title}
-                            className="w-10 h-10 object-cover rounded bg-white/5 flex-shrink-0 border border-[var(--card-border)]"
+                            className="w-14 h-14 object-cover rounded-xl border border-[var(--card-border)] flex-shrink-0"
                           />
-                          <div className="min-w-0">
-                            <span className="font-bold text-[var(--text-color)] block truncate">{p.title}</span>
-                            <span className="text-[9px] text-[var(--text-muted)] truncate block mt-0.5">{p._id}</span>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-bold text-[var(--text-color)] text-sm truncate">{p.title}</h3>
+                            <span className="text-[9px] text-[var(--text-muted)] font-mono">{p.category}</span>
+                          </div>
+                          {/* Action buttons top-right */}
+                          <div className="flex gap-2 flex-shrink-0">
+                            <button onClick={() => openProductEdit(p)} className="p-2 bg-[var(--btn-secondary-bg)] hover:bg-emerald-500/10 border border-[var(--btn-secondary-border)] text-[var(--text-muted)] hover:text-emerald-500 rounded-xl transition-all cursor-pointer">
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => handleDeleteProd(p._id)} className="p-2 bg-[var(--btn-secondary-bg)] hover:bg-rose-500/10 border border-[var(--btn-secondary-border)] text-[var(--text-muted)] hover:text-rose-500 rounded-xl transition-all cursor-pointer">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
                         </div>
-                      </td>
-                      <td className="p-4 font-semibold text-[var(--text-muted)]">{p.category}</td>
-                      <td className="p-4 font-bold text-[var(--text-color)]">₹{p.price}</td>
-                      <td className="p-4 font-bold text-emerald-600 dark:text-emerald-450">
-                        {p.discountPrice ? `₹${p.discountPrice}` : '--'}
-                      </td>
-                      <td className="p-4">
-                        <span
-                          className={`font-bold px-2.5 py-0.5 rounded-lg text-[9px] uppercase tracking-wide inline-block ${
-                            p.stock === 0
-                              ? 'bg-rose-500/10 text-rose-500 dark:text-rose-400 border border-rose-500/15'
-                              : p.stock <= 5
-                              ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/15'
-                              : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/15'
-                          }`}
-                        >
-                          {p.stock === 0 ? 'Out of Stock' : p.stock <= 5 ? `Critical: ${p.stock}` : `Units: ${p.stock}`}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex gap-2">
-                          {p.sourceMarketplaceLinks?.amazon ? (
-                            <a
-                              href={p.sourceMarketplaceLinks.amazon}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-2 py-0.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:text-white border border-amber-500/25 rounded text-[9px] font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                            >
-                              Amazon
-                              <ExternalLink className="w-2.5 h-2.5" />
-                            </a>
-                          ) : (
-                            <span className="text-[var(--text-muted)] text-[9px] italic">No Amazon</span>
-                          )}
-                          {p.sourceMarketplaceLinks?.flipkart ? (
-                            <a
-                              href={p.sourceMarketplaceLinks.flipkart}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-2 py-0.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:text-white border border-blue-500/25 rounded text-[9px] font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                            >
-                              Flipkart
-                              <ExternalLink className="w-2.5 h-2.5" />
-                            </a>
-                          ) : (
-                            <span className="text-[var(--text-muted)] text-[9px] italic">No Flipkart</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => openProductEdit(p)}
-                            className="p-1.5 bg-[var(--btn-secondary-bg)] hover:bg-emerald-500/10 border border-[var(--btn-secondary-border)] hover:border-emerald-500/15 text-[var(--text-muted)] hover:text-emerald-500 dark:hover:text-emerald-400 rounded-lg transition-all cursor-pointer"
-                            title="Edit details"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteProd(p._id)}
-                            className="p-1.5 bg-[var(--btn-secondary-bg)] hover:bg-rose-500/10 border border-[var(--btn-secondary-border)] hover:border-rose-500/15 text-[var(--text-muted)] hover:text-rose-500 rounded-lg transition-all cursor-pointer"
-                            title="Retire Appliance"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredProducts.length === 0 && (
-                    <tr>
-                      <td colSpan="7" className="p-8 text-center text-slate-500 font-bold">
-                        No matching appliances found in the database.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </main>
 
-      {/* --- SIDEBAR PRODUCT EDIT DRAWER --- */}
+                        {/* Card Body — pricing & stock */}
+                        <div className="grid grid-cols-3 divide-x divide-[var(--card-border)] text-center">
+                          <div className="p-3">
+                            <p className="text-[9px] text-[var(--text-muted)] uppercase font-bold mb-1">Price</p>
+                            <p className="font-extrabold text-[var(--text-color)] text-sm">₹{p.price}</p>
+                          </div>
+                          <div className="p-3">
+                            <p className="text-[9px] text-[var(--text-muted)] uppercase font-bold mb-1">Discount</p>
+                            <p className="font-extrabold text-emerald-600 dark:text-emerald-400 text-sm">{p.discountPrice ? `₹${p.discountPrice}` : '—'}</p>
+                          </div>
+                          <div className="p-3">
+                            <p className="text-[9px] text-[var(--text-muted)] uppercase font-bold mb-1">Stock</p>
+                            <span className={`font-bold text-[10px] px-2 py-0.5 rounded-md inline-block ${p.stock === 0 ? 'bg-rose-500/10 text-rose-500' : p.stock <= 5 ? 'bg-amber-500/10 text-amber-600' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'}`}>
+                              {p.stock === 0 ? 'OOS' : p.stock}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Marketplace links */}
+                      {(p.sourceMarketplaceLinks?.amazon || p.sourceMarketplaceLinks?.flipkart) && (
+                        <div className="px-4 py-3 border-t border-[var(--card-border)] flex gap-2 flex-wrap">
+                          {p.sourceMarketplaceLinks?.amazon && (
+                            <a href={p.sourceMarketplaceLinks.amazon} target="_blank" rel="noopener noreferrer" className="flex-1 text-center px-3 py-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-450 border border-amber-500/25 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 hover:text-white transition-colors">
+                              Amazon <ExternalLink className="w-3 h-3" />
+                            </a>
+                          )}
+                          {p.sourceMarketplaceLinks?.flipkart && (
+                            <a href={p.sourceMarketplaceLinks.flipkart} target="_blank" rel="noopener noreferrer" className="flex-1 text-center px-3 py-1.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/25 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 hover:text-white transition-colors">
+                              Flipkart <ExternalLink className="w-3 h-3" />
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+            </div>
+
+          </div>
+        </main>
+      </div>
+
+      {/* ── PRODUCT DRAWER ── */}
       {isProductDrawerOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end animate-fadeIn">
-          <div className="absolute inset-0 -z-10" onClick={() => setIsProductDrawerOpen(false)}></div>
-
-          <div className="w-full max-w-md bg-[var(--bg-color)] border-l border-[var(--nav-border)] h-full p-6 flex flex-col justify-between shadow-2xl animate-slideLeft">
-            {/* Wrap drawer elements inside single Form component natively */}
-            <form onSubmit={handleProductSubmit} className="h-full flex flex-col justify-between">
-              <div className="overflow-y-auto pr-1 flex-grow">
-                <div className="flex justify-between items-center mb-8 border-b border-[var(--nav-border)] pb-4">
-                  <div>
-                    <h3 className="text-sm font-black text-[var(--text-color)] uppercase tracking-wider">
-                      {selectedProduct ? 'Update Appliance' : 'Add New Appliance'}
-                    </h3>
-                    <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Define specifications, pricing, upload image file, and links.</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsProductDrawerOpen(false)}
-                    className="p-1.5 bg-[var(--btn-secondary-bg)] hover:bg-rose-500/10 border border-[var(--btn-secondary-border)] text-[var(--text-muted)] hover:text-rose-500 rounded-lg transition-all cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+          <div className="absolute inset-0 -z-10" onClick={() => setIsProductDrawerOpen(false)} />
+          <div className="w-full max-w-md bg-[var(--bg-color)] border-l border-[var(--nav-border)] h-full flex flex-col shadow-2xl animate-slideLeft">
+            <form onSubmit={handleProductSubmit} className="h-full flex flex-col">
+              {/* Drawer Header */}
+              <div className="flex justify-between items-center p-5 border-b border-[var(--nav-border)] flex-shrink-0">
+                <div>
+                  <h3 className="text-sm font-black text-[var(--text-color)] uppercase tracking-wider">
+                    {selectedProduct ? 'Update Appliance' : 'Add New Appliance'}
+                  </h3>
+                  <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Fill in all required fields and submit.</p>
                 </div>
+                <button type="button" onClick={() => setIsProductDrawerOpen(false)} className="p-1.5 bg-[var(--btn-secondary-bg)] hover:bg-rose-500/10 border border-[var(--btn-secondary-border)] text-[var(--text-muted)] hover:text-rose-500 rounded-lg transition-all cursor-pointer flex-shrink-0">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
 
-                <div className="space-y-4 text-xs">
+              {/* Scrollable Form Fields */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
+                <div>
+                  <label className="block text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">Application Name *</label>
+                  <input type="text" required placeholder="e.g. Wellmora Pro-Blend 1000W" value={productForm.title} onChange={e => setProductForm({ ...productForm, title: e.target.value })} className="w-full glass-input px-3.5 py-2.5 rounded-xl text-xs text-[var(--input-color)]" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">Specification Details *</label>
+                  <textarea rows="3" required placeholder="Comprehensive appliance description..." value={productForm.description} onChange={e => setProductForm({ ...productForm, description: e.target.value })} className="w-full glass-input px-3.5 py-2.5 rounded-xl text-xs text-[var(--input-color)] resize-none" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">Application Name</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Wellmora Pro-Blend 1000W Mixer Grinder"
-                      value={productForm.title}
-                      onChange={(e) => setProductForm({ ...productForm, title: e.target.value })}
-                      className="w-full glass-input px-3.5 py-2.5 rounded-xl text-xs text-[var(--input-color)]"
-                    />
+                    <label className="block text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">Category</label>
+                    <select value={productForm.category} onChange={e => setProductForm({ ...productForm, category: e.target.value })} className="w-full glass-input px-3 py-2.5 rounded-xl text-xs text-[var(--input-color)] cursor-pointer">
+                      <option value="Kitchen Appliances">Kitchen</option>
+                      <option value="Home Appliances">Home</option>
+                      <option value="Cookware">Cookware</option>
+                      <option value="Tableware">Tableware</option>
+                    </select>
                   </div>
-
                   <div>
-                    <label className="block text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">Specification Details</label>
-                    <textarea
-                      rows="3"
-                      required
-                      placeholder="Provide a comprehensive operational summary of the appliance..."
-                      value={productForm.description}
-                      onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
-                      className="w-full glass-input px-3.5 py-2.5 rounded-xl text-xs text-[var(--input-color)] resize-none"
-                    ></textarea>
+                    <label className="block text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">Stock *</label>
+                    <input type="number" required min="0" placeholder="e.g. 25" value={productForm.stock} onChange={e => setProductForm({ ...productForm, stock: e.target.value })} className="w-full glass-input px-3.5 py-2.5 rounded-xl text-xs text-[var(--input-color)]" />
                   </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">Category</label>
-                      <select
-                        value={productForm.category}
-                        onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
-                        className="w-full glass-input px-3 py-2.5 rounded-xl text-xs text-[var(--input-color)] cursor-pointer"
-                      >
-                        <option value="Kitchen Appliances">Kitchen Appliances</option>
-                        <option value="Home Appliances">Home Appliances</option>
-                        <option value="Cookware">Cookware</option>
-                        <option value="Tableware">Tableware</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">Warehouse Stock</label>
-                      <input
-                        type="number"
-                        required
-                        min="0"
-                        placeholder="e.g. 25"
-                        value={productForm.stock}
-                        onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })}
-                        className="w-full glass-input px-3.5 py-2.5 rounded-xl text-xs text-[var(--input-color)]"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">Price (₹)</label>
-                      <input
-                        type="number"
-                        required
-                        min="1"
-                        placeholder="e.g. 4999"
-                        value={productForm.price}
-                        onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
-                        className="w-full glass-input px-3.5 py-2.5 rounded-xl text-xs text-[var(--input-color)]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">Discounted Price (₹)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        placeholder="e.g. 3499"
-                        value={productForm.discountPrice}
-                        onChange={(e) => setProductForm({ ...productForm, discountPrice: e.target.value })}
-                        className="w-full glass-input px-3.5 py-2.5 rounded-xl text-xs text-white"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Local Image File Upload button */}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1.5 flex items-center gap-1">
-                      <Image className="w-3.5 h-3.5 text-emerald-500" />
-                      Appliance Image Upload
-                    </label>
-                    {productForm.images && (
-                      <div className="mb-3 p-1.5 bg-white/5 border border-[var(--panel-border)] rounded-xl flex items-center gap-3">
-                        <img src={productForm.images} alt="Preview" className="w-10 h-10 object-cover rounded-lg border border-white/10" />
-                        <span className="text-[10px] text-[var(--text-muted)] font-semibold truncate max-w-[200px]">Current file loaded</span>
-                      </div>
-                    )}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="w-full glass-input px-3.5 py-2.5 rounded-xl text-[10px] text-[var(--text-color)] cursor-pointer file:mr-3 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-[9px] file:font-extrabold file:bg-emerald-500/10 file:text-emerald-600 dark:file:text-emerald-400 hover:file:bg-emerald-500/25 file:cursor-pointer"
-                    />
+                    <label className="block text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">Price (₹) *</label>
+                    <input type="number" required min="1" placeholder="e.g. 4999" value={productForm.price} onChange={e => setProductForm({ ...productForm, price: e.target.value })} className="w-full glass-input px-3.5 py-2.5 rounded-xl text-xs text-[var(--input-color)]" />
                   </div>
-
-                  {/* Redirect Links Section */}
-                  <div className="border-t border-[var(--nav-border)] pt-4 space-y-4">
-                    <span className="text-[9px] text-[var(--text-muted)] font-bold uppercase tracking-widest block flex items-center gap-1">
-                      <LinkIcon className="w-3 h-3 text-emerald-500" />
-                      Redirection Links
-                    </span>
-                    <div>
-                      <label className="block text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">Amazon Product URL</label>
-                      <input
-                        type="url"
-                        placeholder="https://www.amazon.in/dp/..."
-                        value={productForm.amazonLink}
-                        onChange={(e) => setProductForm({ ...productForm, amazonLink: e.target.value })}
-                        className="w-full glass-input px-3.5 py-2.5 rounded-xl text-xs text-[var(--input-color)]"
-                      />
+                  <div>
+                    <label className="block text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">Discount (₹)</label>
+                    <input type="number" min="0" placeholder="e.g. 3499" value={productForm.discountPrice} onChange={e => setProductForm({ ...productForm, discountPrice: e.target.value })} className="w-full glass-input px-3.5 py-2.5 rounded-xl text-xs text-white" />
+                  </div>
+                </div>
+                <div>
+                  <label className="flex items-center gap-1 text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1.5">
+                    <Image className="w-3.5 h-3.5 text-emerald-500" /> Image Upload
+                  </label>
+                  {productForm.images && (
+                    <div className="mb-2 p-1.5 bg-white/5 border border-[var(--panel-border)] rounded-xl flex items-center gap-3">
+                      <img src={productForm.images} alt="Preview" className="w-10 h-10 object-cover rounded-lg border border-white/10" />
+                      <span className="text-[10px] text-[var(--text-muted)] font-semibold">Image loaded</span>
                     </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">Flipkart Product URL</label>
-                      <input
-                        type="url"
-                        placeholder="https://www.flipkart.com/..."
-                        value={productForm.flipkartLink}
-                        onChange={(e) => setProductForm({ ...productForm, flipkartLink: e.target.value })}
-                        className="w-full glass-input px-3.5 py-2.5 rounded-xl text-xs text-[var(--input-color)]"
-                      />
-                    </div>
+                  )}
+                  <input type="file" accept="image/*" onChange={handleImageChange} className="w-full glass-input px-3.5 py-2.5 rounded-xl text-[10px] text-[var(--text-color)] cursor-pointer file:mr-3 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-[9px] file:font-extrabold file:bg-emerald-500/10 file:text-emerald-600 dark:file:text-emerald-400 hover:file:bg-emerald-500/25 file:cursor-pointer" />
+                </div>
+                <div className="border-t border-[var(--nav-border)] pt-4 space-y-3">
+                  <span className="flex items-center gap-1 text-[9px] text-[var(--text-muted)] font-bold uppercase tracking-widest">
+                    <LinkIcon className="w-3 h-3 text-emerald-500" /> Redirection Links
+                  </span>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">Amazon URL</label>
+                    <input type="url" placeholder="https://www.amazon.in/dp/..." value={productForm.amazonLink} onChange={e => setProductForm({ ...productForm, amazonLink: e.target.value })} className="w-full glass-input px-3.5 py-2.5 rounded-xl text-xs text-[var(--input-color)]" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">Flipkart URL</label>
+                    <input type="url" placeholder="https://www.flipkart.com/..." value={productForm.flipkartLink} onChange={e => setProductForm({ ...productForm, flipkartLink: e.target.value })} className="w-full glass-input px-3.5 py-2.5 rounded-xl text-xs text-[var(--input-color)]" />
                   </div>
                 </div>
               </div>
 
-              <div className="border-t border-[var(--nav-border)] pt-6 flex gap-4 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setIsProductDrawerOpen(false)}
-                  className="flex-1 px-4 py-3 border border-[var(--nav-border)] hover:bg-white/5 rounded-xl text-xs font-bold text-slate-450 hover:text-white transition-all cursor-pointer"
-                >
+              {/* Drawer Footer */}
+              <div className="border-t border-[var(--nav-border)] p-5 flex gap-3 flex-shrink-0">
+                <button type="button" onClick={() => setIsProductDrawerOpen(false)} className="flex-1 px-4 py-3 border border-[var(--nav-border)] hover:bg-white/5 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition-all cursor-pointer">
                   Dismiss
                 </button>
-                <button
-                  type="submit"
-                  className="flex-1 glass-btn-primary px-4 py-3 rounded-xl text-xs font-black tracking-wide cursor-pointer"
-                >
+                <button type="submit" className="flex-1 glass-btn-primary px-4 py-3 rounded-xl text-xs font-black tracking-wide cursor-pointer">
                   {selectedProduct ? 'Update Product' : 'Add Product'}
                 </button>
               </div>
@@ -577,64 +542,37 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {/* --- DYNAMIC ADMINISTRATOR PROFILE EDIT MODAL --- */}
+      {/* ── PROFILE MODAL ── */}
       {isProfileModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center animate-fadeIn">
-          <div className="max-w-md w-full glass-card border border-[var(--card-border)] p-6 bg-[var(--bg-color)] animate-scaleUp shadow-2xl mx-6">
-            <div className="flex justify-between items-center mb-6 border-b border-[var(--nav-border)] pb-3">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center animate-fadeIn p-4">
+          <div className="w-full max-w-md glass-card border border-[var(--card-border)] p-6 bg-[var(--bg-color)] animate-scaleUp shadow-2xl rounded-2xl">
+            <div className="flex justify-between items-center mb-5 border-b border-[var(--nav-border)] pb-3">
               <div>
                 <h3 className="text-sm font-black text-[var(--text-color)] uppercase tracking-wider">Edit Administrator Profile</h3>
                 <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Update console administrator settings.</p>
               </div>
-              <button
-                onClick={() => setIsProfileModalOpen(false)}
-                className="p-1.5 bg-[var(--btn-secondary-bg)] border border-[var(--btn-secondary-border)] rounded-lg text-[var(--text-muted)] hover:text-rose-500 cursor-pointer"
-              >
+              <button onClick={() => setIsProfileModalOpen(false)} className="p-1.5 bg-[var(--btn-secondary-bg)] border border-[var(--btn-secondary-border)] rounded-lg text-[var(--text-muted)] hover:text-rose-500 cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
-
             <form onSubmit={handleProfileSubmit} className="space-y-4 text-xs">
               <div>
                 <label className="block text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">Administrator Name</label>
-                <input
-                  type="text"
-                  required
-                  value={profileForm.name}
-                  onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-                  className="w-full glass-input px-3.5 py-2.5 rounded-xl text-[var(--input-color)] text-xs"
-                />
+                <input type="text" required value={profileForm.name} onChange={e => setProfileForm({ ...profileForm, name: e.target.value })} className="w-full glass-input px-3.5 py-2.5 rounded-xl text-[var(--input-color)] text-xs" />
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">Email Address</label>
-                <input
-                  type="email"
-                  required
-                  value={profileForm.email}
-                  onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
-                  className="w-full glass-input px-3.5 py-2.5 rounded-xl text-[var(--input-color)] text-xs"
-                />
+                <input type="email" required value={profileForm.email} onChange={e => setProfileForm({ ...profileForm, email: e.target.value })} className="w-full glass-input px-3.5 py-2.5 rounded-xl text-[var(--input-color)] text-xs" />
               </div>
-
-              <div className="border-t border-[var(--nav-border)] pt-4 flex gap-4 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setIsProfileModalOpen(false)}
-                  className="flex-1 px-4 py-2.5 border border-[var(--nav-border)] hover:bg-white/5 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition-all cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 glass-btn-primary px-4 py-2.5 rounded-xl text-xs font-black tracking-wide cursor-pointer"
-                >
-                  Save Changes
-                </button>
+              <div className="pt-4 flex gap-3">
+                <button type="button" onClick={() => setIsProfileModalOpen(false)} className="flex-1 px-4 py-2.5 border border-[var(--nav-border)] hover:bg-white/5 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition-all cursor-pointer">Cancel</button>
+                <button type="submit" className="flex-1 glass-btn-primary px-4 py-2.5 rounded-xl text-xs font-black tracking-wide cursor-pointer">Save Changes</button>
               </div>
             </form>
           </div>
         </div>
       )}
+
     </div>
   );
 };

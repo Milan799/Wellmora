@@ -2,7 +2,18 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 
 const ProductContext = createContext();
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const getApiUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  const hostname = window.location.hostname;
+  if (hostname !== 'localhost' && hostname !== '127.0.0.1' && !hostname.endsWith('.vercel.app')) {
+    return `http://${hostname}:5000`;
+  }
+  return 'http://localhost:5000';
+};
+
+const API_URL = getApiUrl();
 
 export const ProductProvider = ({ children }) => {
   const [products, setProducts] = useState([]);
@@ -25,7 +36,7 @@ export const ProductProvider = ({ children }) => {
         setError(data.error || 'Failed to fetch products');
       }
     } catch (err) {
-      setError('Network error fetching products');
+      setError(`Network error fetching products from ${API_URL}. Details: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -57,7 +68,7 @@ export const ProductProvider = ({ children }) => {
       }
       return { success: false, error: data.error || 'Failed to create product' };
     } catch (err) {
-      return { success: false, error: 'Network error creating product' };
+      return { success: false, error: `Network error creating product at ${API_URL}/api/products. Details: ${err.message}. Please verify VITE_API_URL settings in Vercel.` };
     }
   };
 
@@ -87,7 +98,7 @@ export const ProductProvider = ({ children }) => {
       }
       return { success: false, error: data.error || 'Failed to update product' };
     } catch (err) {
-      return { success: false, error: 'Network error updating product' };
+      return { success: false, error: `Network error updating product at ${API_URL}/api/products/${id}. Details: ${err.message}` };
     }
   };
 
@@ -103,7 +114,7 @@ export const ProductProvider = ({ children }) => {
       }
       return { success: false, error: data.error || 'Failed to delete product' };
     } catch (err) {
-      return { success: false, error: 'Network error deleting product' };
+      return { success: false, error: `Network error deleting product at ${API_URL}/api/products/${id}. Details: ${err.message}` };
     }
   };
 

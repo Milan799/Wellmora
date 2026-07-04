@@ -2,7 +2,18 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 
 const CartContext = createContext();
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const getApiUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  const hostname = window.location.hostname;
+  if (hostname !== 'localhost' && hostname !== '127.0.0.1' && !hostname.endsWith('.vercel.app')) {
+    return `http://${hostname}:5000`;
+  }
+  return 'http://localhost:5000';
+};
+
+const API_URL = getApiUrl();
 
 export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState(() => {
