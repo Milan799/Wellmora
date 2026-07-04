@@ -53,11 +53,28 @@ const isLocalIp = (url) => {
   }
 };
 
+const originMatchesConfig = (origin, configUrl) => {
+  if (!configUrl) return false;
+  try {
+    const originHost = new URL(origin).hostname;
+    const configHost = configUrl.startsWith('http') ? new URL(configUrl).hostname : configUrl.trim();
+    return originHost === configHost;
+  } catch {
+    return false;
+  }
+};
+
 // Socket.io configuration
 const io = new Server(server, {
   cors: {
     origin: function (origin, callback) {
-      if (!origin || isLocalIp(origin) || allowedOrigins.includes(origin)) {
+      if (
+        !origin || 
+        isLocalIp(origin) || 
+        allowedOrigins.includes(origin) ||
+        originMatchesConfig(origin, process.env.CLIENT_URL) ||
+        originMatchesConfig(origin, process.env.ADMIN_URL)
+      ) {
         return callback(null, true);
       }
       return callback(new Error('Not allowed by CORS'), false);
@@ -78,7 +95,12 @@ app.use(helmet());
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
-    if (isLocalIp(origin) || allowedOrigins.includes(origin)) {
+    if (
+      isLocalIp(origin) || 
+      allowedOrigins.includes(origin) ||
+      originMatchesConfig(origin, process.env.CLIENT_URL) ||
+      originMatchesConfig(origin, process.env.ADMIN_URL)
+    ) {
       return callback(null, true);
     }
     const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
