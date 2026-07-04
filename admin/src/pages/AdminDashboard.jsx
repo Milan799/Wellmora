@@ -16,7 +16,10 @@ import {
   Image,
   Link as LinkIcon,
   Menu,
-  Mail
+  Mail,
+  Bell,
+  HelpCircle,
+  ShieldCheck
 } from 'lucide-react';
 import Logo from '../components/Logo.jsx';
 
@@ -32,7 +35,8 @@ const AdminDashboard = () => {
     messages,
     messagesLoading,
     fetchMessages,
-    adminDeleteSupportMessage
+    adminDeleteSupportMessage,
+    socket
   } = useProducts();
   const navigate = useNavigate();
 
@@ -46,6 +50,67 @@ const AdminDashboard = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isProductDrawerOpen, setIsProductDrawerOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
+  // Toast Notification State
+  const [toast, setToast] = useState(null);
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+  };
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  // Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState(null);
+  const handleConfirmAction = () => {
+    if (confirmModal && confirmModal.onConfirm) {
+      confirmModal.onConfirm();
+    }
+    setConfirmModal(null);
+  };
+
+  // Notifications State
+  const [notifications, setNotifications] = useState([]);
+  const [isNotifMenuOpen, setIsNotifMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewProductNotif = (newProduct) => {
+      const notif = {
+        id: 'notif_' + Date.now(),
+        title: 'New Appliance Added',
+        desc: `${newProduct.title} was added to the catalog.`,
+        time: new Date(),
+        unread: true
+      };
+      setNotifications(prev => [notif, ...prev]);
+      showToast('New appliance added to catalog!');
+    };
+
+    const handleNewMessageNotif = (newMsg) => {
+      const notif = {
+        id: 'notif_' + Date.now(),
+        title: 'New Support Message',
+        desc: `Message from ${newMsg.name}: "${newMsg.subject}"`,
+        time: new Date(),
+        unread: true
+      };
+      setNotifications(prev => [notif, ...prev]);
+      showToast('New support message received!', 'info');
+    };
+
+    socket.on('product_created', handleNewProductNotif);
+    socket.on('support_message_created', handleNewMessageNotif);
+
+    return () => {
+      socket.off('product_created', handleNewProductNotif);
+      socket.off('support_message_created', handleNewMessageNotif);
+    };
+  }, [socket]);
 
   // Product Form
   const [productForm, setProductForm] = useState({
@@ -118,7 +183,7 @@ const AdminDashboard = () => {
     if (!profileForm.name || !profileForm.email) return;
     updateProfile(profileForm.name, profileForm.email);
     setIsProfileModalOpen(false);
-    alert('Administrator profile updated successfully!');
+    showToast('Administrator profile updated!');
   };
 
   const openProductCreate = () => {
@@ -153,24 +218,34 @@ const AdminDashboard = () => {
       };
       if (selectedProduct) {
         const res = await adminUpdateProduct(selectedProduct._id, payload);
-        alert(res.success ? 'Appliance updated!' : (res.error || 'Failed to update'));
+        if (res.success) showToast('Appliance updated successfully!');
+        else showToast(res.error || 'Failed to update', 'error');
       } else {
         const res = await adminCreateProduct(payload);
-        alert(res.success ? 'Appliance added to catalog!' : (res.error || 'Failed to add'));
+        if (res.success) showToast('Appliance added to catalog!');
+        else showToast(res.error || 'Failed to add', 'error');
       }
       setIsProductDrawerOpen(false);
       fetchProducts();
     } catch (err) {
-      alert('Submission error: ' + err.message);
+      showToast('Submission error: ' + err.message, 'error');
     }
   };
 
-  const handleDeleteProd = async (id) => {
-    if (window.confirm('Retire this appliance?')) {
-      const res = await adminDeleteProduct(id);
-      if (res.success) { alert('Appliance retired.'); fetchProducts(); }
-      else alert(res.error || 'Failed to delete');
-    }
+  const handleDeleteProd = (id) => {
+    setConfirmModal({
+      title: 'Retire Appliance',
+      message: 'Are you sure you want to permanently retire this appliance from the catalog?',
+      onConfirm: async () => {
+        const res = await adminDeleteProduct(id);
+        if (res.success) {
+          showToast('Appliance retired successfully!');
+          fetchProducts();
+        } else {
+          showToast(res.error || 'Failed to delete', 'error');
+        }
+      }
+    });
   };
 
   const filteredProducts = products.filter(p => {
@@ -306,16 +381,75 @@ const AdminDashboard = () => {
                     : 'View and respond to customer support inquiries.'}
                 </p>
               </div>
-              {activeTab === 'catalog' && (
-                <button
-                  onClick={openProductCreate}
-                  className="hidden sm:flex glass-btn-primary px-5 py-3 rounded-xl text-xs font-black tracking-wide items-center gap-1.5 cursor-pointer shadow-lg shadow-emerald-500/10"
-                >
-                  <PlusCircle className="w-4 h-4" />
-                  Add New Appliance
-                </button>
-              )}
-            </div>
+              <div className="flex items-center gap-3 self-end sm:self-center relative">
+                {/* Notification Bell Button */}
+                <div className="relative">
+                  <button
+                    onClick={() => setIsNotifMenuOpen(!isNotifMenuOpen)}
+                    className="p-3 bg-[var(--btn-secondary-bg)] hover:bg-emerald-500/10 border border-[var(--btn-secondary-border)] hover:border-emerald-500/15 text-[var(--text-muted)] hover:text-emerald-500 rounded-xl transition-all cursor-pointer relative"
+                    title="Notifications"
+                  >
+                    <Bell className="w-4 h-4" />
+                    {notifications.some(n => n.unread) && (
+                      <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
+                    )}
+                  </button>
+
+                  {/* Notification Dropdown Menu */}
+                  {isNotifMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-80 glass-panel border border-[var(--panel-border)] rounded-2xl shadow-2xl z-50 p-4 animate-scaleUp max-h-96 overflow-y-auto">
+                      <div className="flex justify-between items-center pb-2 border-b border-[var(--panel-border)] mb-3">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-color)]">Recent Events</span>
+                        {notifications.length > 0 && (
+                          <button
+                            onClick={() => setNotifications(prev => prev.map(n => ({ ...n, unread: false })))}
+                            className="text-[9px] text-emerald-405 hover:underline cursor-pointer font-bold bg-transparent border-0"
+                          >
+                            Mark all read
+                          </button>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        {notifications.length === 0 ? (
+                          <p className="text-[10px] text-[var(--text-muted)] text-center py-4">No recent notifications.</p>
+                        ) : (
+                          notifications.map(n => (
+                            <div
+                              key={n.id}
+                              onClick={() => {
+                                setNotifications(prev => prev.map(item => item.id === n.id ? { ...item, unread: false } : item));
+                              }}
+                              className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                                n.unread 
+                                  ? 'bg-emerald-500/5 border-emerald-500/20 hover:bg-emerald-500/10' 
+                                  : 'bg-white/2 border-white/5 hover:border-white/10'
+                              }`}
+                            >
+                              <div className="flex justify-between items-start gap-2 mb-1">
+                                <span className="text-[10px] font-black text-[var(--text-color)]">{n.title}</span>
+                                <span className="text-[8px] text-[var(--text-muted)] font-mono">
+                                  {new Date(n.time).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                              <p className="text-[9px] text-[var(--text-muted)] leading-relaxed">{n.desc}</p>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {activeTab === 'catalog' && (
+                  <button
+                    onClick={openProductCreate}
+                    className="hidden sm:flex glass-btn-primary px-5 py-3 rounded-xl text-xs font-black tracking-wide items-center gap-1.5 cursor-pointer shadow-lg shadow-emerald-500/10"
+                  >
+                    <PlusCircle className="w-4 h-4" />
+                    Add New Appliance
+                  </button>
+                )}
+              </div>
 
             {activeTab === 'catalog' ? (
               <>
@@ -513,11 +647,16 @@ const AdminDashboard = () => {
                         </div>
                         <div className="mt-4 pt-3 border-t border-[var(--card-border)] flex justify-between items-center gap-2">
                           <button
-                            onClick={async () => {
-                              if (window.confirm('Mark this support message as resolved and delete it?')) {
-                                const res = await adminDeleteSupportMessage(msg._id);
-                                if (!res.success) alert(res.error);
-                              }
+                            onClick={() => {
+                              setConfirmModal({
+                                title: 'Resolve Ticket',
+                                message: 'Mark this support message as resolved and delete it from the database?',
+                                onConfirm: async () => {
+                                  const res = await adminDeleteSupportMessage(msg._id);
+                                  if (res.success) showToast('Support ticket resolved!');
+                                  else showToast(res.error || 'Failed to resolve', 'error');
+                                }
+                              });
                             }}
                             className="p-2 bg-[var(--btn-secondary-bg)] hover:bg-rose-500/10 border border-[var(--btn-secondary-border)] hover:border-rose-500/15 text-[var(--text-muted)] hover:text-rose-500 rounded-xl transition-all cursor-pointer text-[10px] font-bold flex items-center gap-1"
                             title="Resolve Ticket"
@@ -540,7 +679,51 @@ const AdminDashboard = () => {
               </div>
             )}
           </div>
+          </div>
         </main>
+
+        {/* Custom Toast Notification */}
+        {toast && (
+          <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl border backdrop-blur-md shadow-2xl animate-slideLeft ${
+            toast.type === 'error' 
+              ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' 
+              : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-450'
+          }`}>
+            {toast.type === 'error' ? <X className="w-4 h-4 text-rose-500 animate-pulse" /> : <ShieldCheck className="w-4 h-4 text-emerald-400" />}
+            <span className="text-xs font-bold">{toast.message}</span>
+          </div>
+        )}
+
+        {/* Custom Confirmation Modal */}
+        {confirmModal && (
+          <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
+            <div className="glass-card border border-[var(--panel-border)] p-6 rounded-2xl w-full max-w-sm shadow-2xl animate-scaleUp text-center">
+              <HelpCircle className="w-12 h-12 text-emerald-400 mx-auto mb-4 animate-bounce" />
+              <h3 className="font-extrabold text-[var(--text-color)] text-sm mb-2 uppercase tracking-wide">
+                {confirmModal.title || 'Confirm Action'}
+              </h3>
+              <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-6">
+                {confirmModal.message}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setConfirmModal(null)}
+                  className="flex-1 glass-btn-secondary py-2.5 rounded-xl text-xs font-bold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmAction}
+                  className="flex-1 glass-btn-primary py-2.5 rounded-xl text-xs font-bold cursor-pointer bg-rose-500/20 border-rose-500/30 text-rose-450 hover:bg-rose-500 hover:text-white"
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── PRODUCT DRAWER ── */}
