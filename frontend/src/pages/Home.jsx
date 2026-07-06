@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useProducts } from '../context/ProductContext.jsx';
 import { Flame, ShieldCheck, Zap, Sparkles, ArrowRight } from 'lucide-react';
 import SkeletonLoader from '../components/SkeletonLoader.jsx';
+import ProductCardImageSlider from '../components/ProductCardImageSlider.jsx';
 
 const Home = () => {
   const { products, loading, fetchProducts } = useProducts();
@@ -144,17 +145,8 @@ const Home = () => {
             {trendingProducts.map((product) => (
               <div key={product._id} className="glass-card overflow-hidden border border-white/5 flex flex-col justify-between glass-panel-hover p-4 group">
                 <div>
-                  {/* Image Container */}
-                  <div className="relative rounded-xl overflow-hidden mb-4 aspect-[4/3] bg-white/5">
-                    <img
-                      src={product.images[0] || "https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&q=80&w=400"}
-                      alt={product.title}
-                      className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <span className="absolute top-2.5 right-2.5 bg-black/60 backdrop-blur-md text-slate-300 text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md border border-white/10">
-                      {product.category}
-                    </span>
-                  </div>
+                  {/* Product Card Image Slider */}
+                  <ProductCardImageSlider images={product.images} category={product.category} />
 
                   {/* Title & Desc */}
                   <Link to={`/products/${product._id}`} className="block hover:text-emerald-400 transition-colors">

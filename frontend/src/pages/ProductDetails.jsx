@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useProducts } from '../context/ProductContext.jsx';
-import { ArrowLeft, ShieldAlert, Check, ArrowRight, ExternalLink, Star } from 'lucide-react';
+import { ArrowLeft, ShieldAlert, Check, ArrowRight, ExternalLink, Star, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const ProductDetails = () => {
   const { id } = useParams();
@@ -10,6 +10,7 @@ const ProductDetails = () => {
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [reviewerName, setReviewerName] = useState('');
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
@@ -17,10 +18,39 @@ const ProductDetails = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
+  // Touch Swipe States
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchEnd, setTouchEnd] = useState(null);
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd || !product?.images || product.images.length <= 1) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe) {
+      setActiveImageIndex(prev => (prev === product.images.length - 1 ? 0 : prev + 1));
+    }
+    if (isRightSwipe) {
+      setActiveImageIndex(prev => (prev === 0 ? product.images.length - 1 : prev - 1));
+    }
+  };
+
   // Reset everything when the product id in the URL changes
   useEffect(() => {
     setProduct(null);
     setLoading(true);
+    setActiveImageIndex(0);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [id]);
 
@@ -104,16 +134,79 @@ const ProductDetails = () => {
 
         {/* Product Details Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 bg-white/5 border border-white/5 p-6 md:p-8 rounded-3xl backdrop-blur-md shadow-2xl">
-          {/* Product Image */}
-          <div className="relative rounded-2xl overflow-hidden aspect-[4/3] bg-white/5 border border-white/5">
-            <img
-              src={product.images?.[0] || 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&q=80&w=600'}
-              alt={product.title}
-              className="w-full h-full object-cover"
-            />
-            <span className="absolute top-4 left-4 bg-emerald-500/80 backdrop-blur-md text-white text-xs font-extrabold uppercase tracking-widest px-3 py-1.5 rounded-lg border border-white/20">
-              {product.category}
-            </span>
+          {/* Product Image Slider */}
+          <div>
+            <div 
+              onTouchStart={onTouchStart}
+              onTouchMove={onTouchMove}
+              onTouchEnd={onTouchEnd}
+              className="relative rounded-2xl overflow-hidden aspect-[4/3] bg-white/5 border border-white/5 group select-none touch-pan-y"
+            >
+              <img
+                key={activeImageIndex}
+                src={product.images?.[activeImageIndex] || 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&q=80&w=600'}
+                alt={product.title}
+                className="w-full h-full object-contain bg-white/5 animate-fadeIn animate-scaleUp"
+              />
+              <span className="absolute top-4 left-4 bg-emerald-500/80 backdrop-blur-md text-white text-xs font-extrabold uppercase tracking-widest px-3 py-1.5 rounded-lg border border-white/20">
+                {product.category}
+              </span>
+
+              {/* Slider Arrows */}
+              {product.images && product.images.length > 1 && (
+                <>
+                  <button
+                    onClick={() => setActiveImageIndex(prev => (prev === 0 ? product.images.length - 1 : prev - 1))}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 p-2 bg-black/60 hover:bg-emerald-500 text-white rounded-full border border-white/10 opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer shadow-lg hover:scale-105"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => setActiveImageIndex(prev => (prev === product.images.length - 1 ? 0 : prev + 1))}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-black/60 hover:bg-emerald-500 text-white rounded-full border border-white/10 opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer shadow-lg hover:scale-105"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </>
+              )}
+
+              {/* Mobile/Tablet Dots Overlay */}
+              {product.images && product.images.length > 1 && (
+                <div className="flex md:hidden absolute bottom-4 left-1/2 -translate-x-1/2 gap-2 z-10 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/5">
+                  {product.images.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setActiveImageIndex(idx)}
+                      className={`w-2 h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                        idx === activeImageIndex 
+                          ? 'bg-white scale-125' 
+                          : 'bg-white/40 hover:bg-white/60'
+                      }`}
+                      title={`Go to slide ${idx + 1}`}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Thumbnails Row */}
+            {product.images && product.images.length > 1 && (
+              <div className="hidden md:flex gap-2.5 mt-4 overflow-x-auto pb-2 custom-scrollbar">
+                {product.images.map((img, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setActiveImageIndex(idx)}
+                    className={`w-16 h-12 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 cursor-pointer ${
+                      idx === activeImageIndex 
+                        ? 'border-emerald-500 scale-105 shadow-md shadow-emerald-500/20' 
+                        : 'border-white/5 opacity-60 hover:opacity-100'
+                    }`}
+                  >
+                    <img src={img} alt={`thumbnail-${idx}`} className="w-full h-full object-contain bg-white/5" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Product Info */}

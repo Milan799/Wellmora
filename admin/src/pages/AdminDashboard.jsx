@@ -117,7 +117,7 @@ const AdminDashboard = () => {
   // Product Form
   const [productForm, setProductForm] = useState({
     title: '', description: '', category: 'Kitchen Appliances',
-    price: '', discountPrice: '', stock: '', images: '',
+    price: '', discountPrice: '', stock: '', images: [],
     amazonLink: '', flipkartLink: ''
   });
 
@@ -140,8 +140,8 @@ const AdminDashboard = () => {
   const handleLogout = async () => { await logout(); navigate('/login'); };
 
   const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
+    const files = Array.from(e.target.files);
+    files.forEach(file => {
       const reader = new FileReader();
       reader.onloadend = () => {
         const img = new window.Image();
@@ -168,11 +168,14 @@ const AdminDashboard = () => {
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
           const dataUrl = canvas.toDataURL('image/jpeg', 0.7); // 70% quality compression
-          setProductForm(prev => ({ ...prev, images: dataUrl }));
+          setProductForm(prev => ({ 
+            ...prev, 
+            images: [...(prev.images || []), dataUrl] 
+          }));
         };
       };
       reader.readAsDataURL(file);
-    }
+    });
   };
 
   const openProfileEdit = () => {
@@ -190,7 +193,7 @@ const AdminDashboard = () => {
 
   const openProductCreate = () => {
     setSelectedProduct(null);
-    setProductForm({ title: '', description: '', category: 'Kitchen Appliances', price: '', discountPrice: '', stock: '', images: '', amazonLink: '', flipkartLink: '' });
+    setProductForm({ title: '', description: '', category: 'Kitchen Appliances', price: '', discountPrice: '', stock: '', images: [], amazonLink: '', flipkartLink: '' });
     setIsProductDrawerOpen(true);
   };
 
@@ -199,7 +202,7 @@ const AdminDashboard = () => {
     setProductForm({
       title: prod.title, description: prod.description, category: prod.category,
       price: prod.price, discountPrice: prod.discountPrice || '', stock: prod.stock,
-      images: prod.images?.[0] || '',
+      images: prod.images || [],
       amazonLink: prod.sourceMarketplaceLinks?.amazon || '',
       flipkartLink: prod.sourceMarketplaceLinks?.flipkart || ''
     });
@@ -215,7 +218,7 @@ const AdminDashboard = () => {
         category: productForm.category, price: Number(productForm.price),
         discountPrice: productForm.discountPrice ? Number(productForm.discountPrice) : undefined,
         stock: Number(productForm.stock),
-        images: productForm.images ? [productForm.images] : undefined,
+        images: productForm.images && productForm.images.length > 0 ? productForm.images : undefined,
         amazonLink: productForm.amazonLink, flipkartLink: productForm.flipkartLink
       };
       if (selectedProduct) {
@@ -784,15 +787,40 @@ const AdminDashboard = () => {
                 </div>
                 <div>
                   <label className="flex items-center gap-1 text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1.5">
-                    <Image className="w-3.5 h-3.5 text-emerald-500" /> Image Upload
+                    <Image className="w-3.5 h-3.5 text-emerald-500" /> Image Upload (Select multiple)
                   </label>
-                  {productForm.images && (
-                    <div className="mb-2 p-1.5 bg-white/5 border border-[var(--panel-border)] rounded-xl flex items-center gap-3">
-                      <img src={productForm.images} alt="Preview" className="w-10 h-10 object-cover rounded-lg border border-white/10" />
-                      <span className="text-[10px] text-[var(--text-muted)] font-semibold">Image loaded</span>
+                  
+                  {/* Grid of uploaded thumbnail previews */}
+                  {productForm.images && productForm.images.length > 0 && (
+                    <div className="grid grid-cols-4 gap-2 mb-3">
+                      {productForm.images.map((img, idx) => (
+                        <div key={idx} className="relative rounded-xl overflow-hidden aspect-[4/3] bg-white/5 border border-white/10 group">
+                          <img src={img} alt={`upload-preview-${idx}`} className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setProductForm(prev => ({
+                                ...prev,
+                                images: prev.images.filter((_, i) => i !== idx)
+                              }));
+                            }}
+                            className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-rose-500 text-white rounded-md transition-colors cursor-pointer animate-fadeIn"
+                            title="Delete Image"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   )}
-                  <input type="file" accept="image/*" onChange={handleImageChange} className="w-full glass-input px-3.5 py-2.5 rounded-xl text-[10px] text-[var(--text-color)] cursor-pointer file:mr-3 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-[9px] file:font-extrabold file:bg-emerald-500/10 file:text-emerald-600 dark:file:text-emerald-400 hover:file:bg-emerald-500/25 file:cursor-pointer" />
+
+                  <input 
+                    type="file" 
+                    multiple 
+                    accept="image/*" 
+                    onChange={handleImageChange} 
+                    className="w-full glass-input px-3.5 py-2.5 rounded-xl text-[10px] text-[var(--text-color)] cursor-pointer file:mr-3 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-[9px] file:font-extrabold file:bg-emerald-500/10 file:text-emerald-600 dark:file:text-emerald-400 hover:file:bg-emerald-500/25 file:cursor-pointer" 
+                  />
                 </div>
                 <div className="border-t border-[var(--nav-border)] pt-4 space-y-3">
                   <span className="flex items-center gap-1 text-[9px] text-[var(--text-muted)] font-bold uppercase tracking-widest">
