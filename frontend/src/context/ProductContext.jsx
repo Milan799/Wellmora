@@ -59,12 +59,12 @@ export const ProductProvider = ({ children }) => {
     }
   };
 
-  const addReview = async (productId, rating, comment) => {
+  const addReview = async (productId, name, rating, comment) => {
     try {
       const res = await fetch(`${API_URL}/api/products/${productId}/reviews`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rating, comment })
+        body: JSON.stringify({ name, rating, comment })
       });
       const data = await res.json();
       if (data.success) {
@@ -100,6 +100,37 @@ export const ProductProvider = ({ children }) => {
 
     socketConnection.on('product_deleted', (deletedId) => {
       setProducts(prev => prev.filter(p => p._id !== deletedId));
+    });
+
+    socketConnection.on('product_review_added', ({ productId, averageRating, numReviews, review }) => {
+      setProducts(prev => prev.map(p => {
+        if (p._id === productId) {
+          const reviewsList = p.reviews || [];
+          const exists = reviewsList.some(r => r._id === review._id);
+          const updatedReviews = exists ? reviewsList : [...reviewsList, review];
+          return {
+            ...p,
+            reviews: updatedReviews,
+            averageRating,
+            numReviews
+          };
+        }
+        return p;
+      }));
+    });
+
+    socketConnection.on('product_review_deleted', ({ productId, averageRating, numReviews, reviewId }) => {
+      setProducts(prev => prev.map(p => {
+        if (p._id === productId) {
+          return {
+            ...p,
+            reviews: (p.reviews || []).filter(r => r._id !== reviewId),
+            averageRating,
+            numReviews
+          };
+        }
+        return p;
+      }));
     });
 
     return () => {

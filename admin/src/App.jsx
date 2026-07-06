@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import { ProductProvider } from './context/ProductContext.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
 import Login from './pages/Login.jsx';
+import Preloader from './components/Preloader.jsx';
 
 // Guard component to protect admin routes
 const AdminRoute = ({ children }) => {
@@ -50,27 +51,29 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <ProductProvider>
-          <div className="min-h-screen bg-blob-gradient text-slate-100 select-none">
-            <Routes>
-              <Route
-                path="/"
-                element={
-                  <AdminRoute>
-                    <AdminDashboard />
-                  </AdminRoute>
-                }
-              />
-              <Route
-                path="/login"
-                element={
-                  <GuestRoute>
-                    <Login />
-                  </GuestRoute>
-                }
-              />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </div>
+          <Preloader>
+            <div className="min-h-screen bg-blob-gradient text-slate-100 select-none">
+              <Routes>
+                <Route
+                  path="/"
+                  element={
+                    <AdminRoute>
+                      <AdminDashboard />
+                    </AdminRoute>
+                  }
+                />
+                <Route
+                  path="/login"
+                  element={
+                    <GuestRoute>
+                      <Login />
+                    </GuestRoute>
+                  }
+                />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </div>
+          </Preloader>
         </ProductProvider>
       </AuthProvider>
     </BrowserRouter>
@@ -78,3 +81,4 @@ function App() {
 }
 
 export default App;
+

@@ -166,25 +166,60 @@ const Home = () => {
                 </div>
 
                 {/* Bottom Section */}
-                <div className="mt-5 pt-3 border-t border-white/5 flex justify-between items-center">
-                  <div className="flex flex-col">
-                    {product.discountPrice ? (
-                      <>
-                        <span className="text-lg font-extrabold text-white">₹{product.discountPrice}</span>
-                        <span className="text-xs text-slate-400 line-through">₹{product.price}</span>
-                      </>
-                    ) : (
-                      <span className="text-lg font-extrabold text-white">₹{product.price}</span>
-                    )}
+                <div className="mt-5 pt-3 border-t border-white/5 flex flex-col gap-3.5">
+                  <div className="flex justify-between items-center">
+                    <div className="flex flex-col">
+                      {product.discountPrice ? (
+                        <>
+                          <span className="text-lg font-extrabold text-white">₹{product.discountPrice}</span>
+                          <span className="text-xs text-slate-400 line-through">₹{product.price}</span>
+                        </>
+                      ) : (
+                        <span className="text-lg font-extrabold text-white">₹{product.price}</span>
+                      )}
+                    </div>
+
+                    <Link
+                      to={`/products/${product._id}`}
+                      className="bg-emerald-500/10 hover:bg-emerald-500 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:text-white px-4 py-2.5 rounded-xl text-xs font-bold tracking-wide flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
+                    >
+                      View Details
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
                   </div>
 
-                  <Link
-                    to={`/products/${product._id}`}
-                    className="bg-emerald-500/10 hover:bg-emerald-500 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:text-white px-4 py-2.5 rounded-xl text-xs font-bold tracking-wide flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
-                  >
-                    View Details
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
+                  <p className="text-[10px] text-rose-500 dark:text-rose-455 font-semibold leading-normal">
+                    * To purchase, please click the official Flipkart or Amazon redirection link below.
+                  </p>
+
+                  {/* Partner Stores (Flipkart / Amazon redirect sync links) */}
+                  <div className="partner-store-container">
+                    <span className="partner-store-label">
+                      Partner Stores:
+                    </span>
+                    <div className="flex gap-2 ml-auto">
+                      {product.sourceMarketplaceLinks?.amazon && (
+                        <a
+                          href={product.sourceMarketplaceLinks.amazon}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-amazon"
+                        >
+                          Amazon
+                        </a>
+                      )}
+                      {product.sourceMarketplaceLinks?.flipkart && (
+                        <a
+                          href={product.sourceMarketplaceLinks.flipkart}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-flipkart"
+                        >
+                          Flipkart
+                        </a>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}

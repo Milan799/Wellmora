@@ -1,8 +1,60 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Key, Mail, ShieldAlert } from 'lucide-react';
 import Logo from '../components/Logo.jsx';
+
+const GridBackground = () => {
+  const [cells, setCells] = useState([]);
+
+  useEffect(() => {
+    const calculateCells = () => {
+      const cellSize = 60; // size of each grid square in pixels
+      const cols = Math.ceil(window.innerWidth / cellSize);
+      const rows = Math.ceil(window.innerHeight / cellSize);
+      const totalCells = cols * rows;
+
+      const newCells = Array.from({ length: totalCells }).map((_, index) => {
+        const delay = Math.random() * 8;
+        const duration = 5 + Math.random() * 5;
+        const shouldGlow = Math.random() < 0.08; // 8% of cells pulse automatically
+        return { id: index, delay, duration, shouldGlow };
+      });
+      setCells(newCells);
+    };
+
+    calculateCells();
+    window.addEventListener('resize', calculateCells);
+    return () => window.removeEventListener('resize', calculateCells);
+  }, []);
+
+  return (
+    <div 
+      className="absolute inset-0 overflow-hidden pointer-events-none z-0 grid" 
+      style={{
+        gridTemplateColumns: `repeat(auto-fill, minmax(60px, 1fr))`,
+        gridAutoRows: '60px',
+        gap: '1px',
+        backgroundColor: 'rgba(6, 9, 14, 0.45)',
+        backgroundImage: 'linear-gradient(to bottom, rgba(255,255,255,0.01) 1px, transparent 1px), linear-gradient(to right, rgba(255,255,255,0.01) 1px, transparent 1px)',
+        backgroundSize: '60px 60px'
+      }}
+    >
+      {cells.map((cell) => (
+        <div
+          key={cell.id}
+          className={`w-full h-full relative transition-all duration-1000 pointer-events-auto hover:bg-emerald-500/20 hover:shadow-[0_0_15px_rgba(16,185,129,0.45)] hover:duration-0 ${
+            cell.shouldGlow ? 'animate-gridPulse' : ''
+          }`}
+          style={{
+            animationDelay: cell.shouldGlow ? `${cell.delay}s` : '0s',
+            animationDuration: cell.shouldGlow ? `${cell.duration}s` : '0s'
+          }}
+        />
+      ))}
+    </div>
+  );
+};
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -33,9 +85,11 @@ const Login = () => {
   };
 
   return (
-    <div className="pt-24 min-h-screen bg-blob-gradient px-6 flex items-center justify-center pb-20 transition-colors duration-300">
-      <div className="max-w-md w-full glass-card border border-[var(--card-border)] p-8 backdrop-blur-md shadow-2xl relative bg-[var(--card-bg)]">
-        <div className="absolute -top-10 -right-10 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
+    <div className="relative min-h-screen bg-blob-gradient px-6 flex items-center justify-center pb-20 transition-colors duration-300 overflow-hidden">
+      <GridBackground />
+
+      <div className="max-w-md w-full glass-card border border-[var(--card-border)] p-8 backdrop-blur-md shadow-2xl relative bg-[var(--card-bg)] z-10">
+        <div className="absolute -top-10 -right-10 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none z-0"></div>
 
         <div className="flex flex-col items-center mb-8">
           <Logo size="md" showText={true} className="mb-2 flex-col" />

@@ -270,3 +270,20 @@
 .animate-scaleUp {
   animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* High-tech login grid tile pulse animation */
+@keyframes gridPulse {
+  0%, 100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+  50% {
+    background-color: rgba(16, 185, 129, 0.08);
+    box-shadow: inset 0 0 10px rgba(16, 185, 129, 0.15);
+  }
+}
+
+.animate-gridPulse {
+  animation: gridPulse 8s infinite ease-in-out;
+}
+

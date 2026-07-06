@@ -5,7 +5,8 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
-  createProductReview
+  createProductReview,
+  deleteProductReview
 } from '../controllers/productController.js';
 
 const router = express.Router();
@@ -21,5 +22,8 @@ router.route('/:id')
 
 router.route('/:id/reviews')
   .post(createProductReview);
+
+router.route('/:id/reviews/:reviewId')
+  .delete(deleteProductReview);
 
 export default router;

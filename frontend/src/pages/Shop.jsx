@@ -234,6 +234,10 @@ const Shop = () => {
                         </Link>
                       </div>
 
+                      <p className="text-[10px] text-rose-500 dark:text-rose-450 font-semibold leading-normal">
+                        * To purchase, please click the official Flipkart or Amazon redirection link below.
+                      </p>
+
                       {/* Partner Stores (Flipkart / Amazon redirect sync links) */}
                       <div className="partner-store-container">
                         <span className="partner-store-label">

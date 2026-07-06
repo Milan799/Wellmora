@@ -146,7 +146,7 @@ export const deleteProduct = async (req, res, next) => {
 
 
 export const createProductReview = async (req, res, next) => {
-  const { rating, comment } = req.body;
+  const { rating, comment, name } = req.body;
 
   try {
     const product = await Product.findById(req.params.id);
@@ -156,7 +156,7 @@ export const createProductReview = async (req, res, next) => {
     }
 
     const userId = req.user ? req.user.id : new mongoose.Types.ObjectId();
-    const userName = req.user ? req.user.name : 'Guest Customer';
+    const userName = req.user ? req.user.name : (name && name.trim() ? name.trim() : 'Guest Customer');
 
     const review = {
       user: userId,
@@ -182,3 +182,38 @@ export const createProductReview = async (req, res, next) => {
     next(error);
   }
 };
+
+export const deleteProductReview = async (req, res, next) => {
+  const { id, reviewId } = req.params;
+
+  try {
+    const product = await Product.findById(id);
+
+    if (!product) {
+      return res.status(404).json({ success: false, error: 'Product not found' });
+    }
+
+    const initialLength = product.reviews.length;
+    product.reviews = product.reviews.filter(r => r._id.toString() !== reviewId);
+
+    if (product.reviews.length === initialLength) {
+      return res.status(404).json({ success: false, error: 'Review not found' });
+    }
+
+    await product.save();
+
+    if (req.io) {
+      req.io.emit('product_review_deleted', {
+        productId: product._id,
+        averageRating: product.averageRating,
+        numReviews: product.numReviews,
+        reviewId
+      });
+    }
+
+    res.status(200).json({ success: true, message: 'Review deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
